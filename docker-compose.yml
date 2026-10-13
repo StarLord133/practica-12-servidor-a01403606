@@ -1,0 +1,31 @@
+# La sala completa:
+#   docker compose up -d --build     el servidor (http://localhost:8000) y el túnel
+#   docker compose logs -f api       lo que va pasando en la sala
+services:
+  api:
+    build: .
+    env_file: .env
+    # --reload + los volúmenes: editas app/ en tu máquina y el servidor se reinicia solo.
+    command: ["uv", "run", "--no-sync", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - ./app:/code/app
+      - ./tests:/code/tests
+      - ./herramientas:/code/herramientas
+      - datos:/datos
+    # Solo en 127.0.0.1: tu máquina y el emulador (10.0.2.2) llegan; el resto del wifi, no.
+    # Tus compañeros entran por el túnel.
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  tunel:
+    image: cloudflare/cloudflared:2026.9.3
+    # Una dirección https://….trycloudflare.com que llega a `api` desde cualquier red.
+    # http2 porque muchas redes bloquean QUIC (UDP). --metrics publica /quicktunnel,
+    # donde la API lee esa dirección para el QR.
+    command: ["tunnel", "--no-autoupdate", "--protocol", "http2", "--metrics", "0.0.0.0:2000", "--url", "http://api:8000"]
+    depends_on:
+      - api
+
+volumes:
+  # La base de la sala. Sobrevive a `docker compose down`; `down -v` la borra.
+  datos:
