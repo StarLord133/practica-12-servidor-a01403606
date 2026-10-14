@@ -5,6 +5,7 @@ description = "El servidor de Charla (Práctica 12 de TC2007B): una sala de chat
 requires-python = ">=3.12"
 dependencies = [
     "fastapi==0.141.1",
+    "python-multipart==0.0.20",
     "uvicorn[standard]==0.53.0",
 ]
 

@@ -7,14 +7,16 @@ os.environ["RUTA_DB"] = ":memory:"
 import pytest
 from fastapi.testclient import TestClient
 
-from app import datos
+from app import datos, imagenes
 from app.main import app
 
 
 @pytest.fixture
-def cliente(monkeypatch):
+def cliente(monkeypatch, tmp_path):
     # Una base nueva para cada prueba: ninguna depende de lo que dejó la anterior.
     monkeypatch.setattr(datos, "db", datos.Datos(":memory:"))
+    # Y una carpeta de fotos vacía, que pytest borra al terminar.
+    monkeypatch.setattr(imagenes, "CARPETA", tmp_path / "imagenes")
     with TestClient(app) as c:
         yield c
 

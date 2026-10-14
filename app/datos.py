@@ -29,10 +29,16 @@ class Datos:
                 id    INTEGER PRIMARY KEY AUTOINCREMENT,
                 de    TEXT NOT NULL,
                 texto TEXT NOT NULL,
-                en    REAL NOT NULL       -- segundos desde 1970, como time.time()
+                en    REAL NOT NULL,      -- segundos desde 1970, como time.time()
+                imagen TEXT               -- la clave de la foto (app/imagenes.py), o NULL
             );
             """
         )
+        # Una base de antes de las fotos no tiene la columna: se le agrega sin borrar nada.
+        columnas = {f["name"] for f in self.con.execute("PRAGMA table_info(mensajes)")}
+        if "imagen" not in columnas:
+            with self.con:
+                self.con.execute("ALTER TABLE mensajes ADD COLUMN imagen TEXT")
 
     # ---------- solicitudes ----------
 
@@ -86,10 +92,11 @@ class Datos:
 
     # ---------- mensajes ----------
 
-    def guardar_mensaje(self, de: str, texto: str) -> dict:
+    def guardar_mensaje(self, de: str, texto: str, imagen: str | None = None) -> dict:
         with self.con:
             cursor = self.con.execute(
-                "INSERT INTO mensajes (de, texto, en) VALUES (?, ?, ?)", (de, texto, time.time())
+                "INSERT INTO mensajes (de, texto, en, imagen) VALUES (?, ?, ?, ?)",
+                (de, texto, time.time(), imagen),
             )
         fila = self.con.execute("SELECT * FROM mensajes WHERE id = ?", (cursor.lastrowid,)).fetchone()
         return dict(fila)

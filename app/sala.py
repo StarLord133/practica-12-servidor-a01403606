@@ -9,7 +9,7 @@ import secrets
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app import datos
+from app import datos, imagenes
 
 router = APIRouter()
 
@@ -23,7 +23,11 @@ conectados: dict[WebSocket, str] = {}
 
 def quien_es(ws: WebSocket) -> str | None:
     """El nickname de quien abre la conexión, por su token. None = no tiene permiso."""
-    token = ws.headers.get("authorization", "").removeprefix("Bearer ").strip()
+    return identificar(ws.headers.get("authorization", "").removeprefix("Bearer ").strip())
+
+
+def identificar(token: str) -> str | None:
+    """El nickname dueño de un token. Lo usan el WebSocket y las fotos."""
     if not token:
         return None
     # compare_digest tarda lo mismo aunque falle en la primera letra: no regala pistas.
@@ -76,8 +80,12 @@ async def atender(yo: str, orden: dict) -> None:
     tipo = orden.get("tipo")
     if tipo == "mensaje":
         texto = str(orden.get("texto", "")).strip()[:500]
-        if texto:
-            await difundir({"tipo": "mensaje", **datos.db.guardar_mensaje(yo, texto)})
+        # La foto ya se subió por POST /imagenes; aquí solo viaja su clave.
+        imagen = orden.get("imagen")
+        if not (isinstance(imagen, str) and imagenes.existe(imagen)):
+            imagen = None
+        if texto or imagen:
+            await difundir({"tipo": "mensaje", **datos.db.guardar_mensaje(yo, texto, imagen)})
     elif tipo in ("aprobar", "rechazar") and yo == ANFITRION:
         s = datos.db.resolver(str(orden.get("id", "")), aprobar=tipo == "aprobar")
         if s and s["estado"] == "aprobada":
